@@ -49,7 +49,8 @@ find_repo() {
         echo "$guess"; return 0
     fi
     local d
-    for d in "$HOME/digitalhome-edge" "$HOME/digitalhomeCloud/digitalhome-edge" /opt/digitalhome-edge; do
+    for d in "$HOME/digitalhome-devops-edge" "$HOME/digitalhomeCloud/digitalhome-devops-edge" /opt/digitalhome-devops-edge \
+             "$HOME/digitalhome-edge" "$HOME/digitalhomeCloud/digitalhome-edge" /opt/digitalhome-edge; do
         [[ -f "${d}/deploy/docker-compose.yml" && -d "${d}/contrib" ]] && { echo "$d"; return 0; }
     done
     return 1
@@ -192,7 +193,7 @@ cmd_build() {
     require_sudo "build"
     command -v docker &>/dev/null || die "docker is required but not found."
     local repo
-    repo="$(find_repo)" || die "repo checkout not found. Set DHE_REPO=/path/to/digitalhome-edge and retry."
+    repo="$(find_repo)" || die "repo checkout not found. Set DHE_REPO=/path/to/digitalhome-devops-edge and retry."
     local repo_compose="${repo}/deploy/docker-compose.yml"
 
     echo "Repo:    ${repo}"
@@ -245,7 +246,7 @@ cmd_webapp_pull() {
     # container restart needed — /opt/dhe/webapp is owned by uid 1000 and httpStatic
     # serves straight from the bind-mount.
     local repo webdir dest src
-    repo="$(find_repo)" || die "repo checkout not found. Set DHE_REPO=/path/to/digitalhome-edge and retry."
+    repo="$(find_repo)" || die "repo checkout not found. Set DHE_REPO=/path/to/digitalhome-devops-edge and retry."
     webdir="${repo}/webapp"
     [[ -d "$webdir" ]] || die "no webapp/ directory in ${repo}"
     dest="${DHE_ROOT}/webapp"

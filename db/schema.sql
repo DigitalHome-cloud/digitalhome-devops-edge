@@ -1,4 +1,4 @@
--- digitalhome-edge shared memory database
+-- digitalhome-devops-edge shared memory database
 -- SQLite — initialise with: sqlite3 digitalhome.db < schema.sql
 
 PRAGMA journal_mode=WAL;

@@ -1,5 +1,5 @@
 {
-  "name": "digitalhome-edge-webapp",
+  "name": "digitalhome-devops-edge-webapp",
   "version": "0.1.0",
   "private": true,
   "description": "Thin edge UI for digitalhome.edge — a static Gatsby SPA served by Node-RED at /app, consuming the headless /app-api/* endpoints. Onboarding + local status; the rich UX lives in the cloud Portal.",

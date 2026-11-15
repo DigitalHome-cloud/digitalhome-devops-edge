@@ -1,4 +1,4 @@
-# digitalhome-edge — Current-State Specification
+# digitalhome-devops-edge — Current-State Specification
 
 > **This document describes what is running today.** For the *target*
 > architecture the product is migrating toward, see
@@ -99,7 +99,7 @@ device-side API keys with a `device_token` scoped to the linked SmartHome
 ## Repository Structure
 
 ```
-digitalhome-edge/
+digitalhome-devops-edge/
   contrib/
     dhc-mcp/           ← MCP server palette (in-tree; installed at build)
     dhc-sync/          ← OAuth + telemetry + dashboard palette (in-tree)

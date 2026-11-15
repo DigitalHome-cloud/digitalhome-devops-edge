@@ -11,6 +11,12 @@ Application layer for **digitalhome.edge** — the local edge server running on
 - `docs/adr/0001-dhe-alignment.md` — locked decisions + phased migration plan.
 - `docs/specs/edge-cloud-api.md` — edge ↔ cloud wire spec (OAuth device flow).
 
+**Scope (ADR-0002):** run and maintenance of a home — devices, phones, pairing,
+health, updates, backups — and, over time, the other digitalhome.cloud instances
+in the home (pro edge, Mediathek edge). Design is *not* done here; that is
+`digitalhome-pro-edge`. The repo was `digitalhome-edge`; the hostname, OAuth
+client id, MCP server name and `/opt/dhe` deliberately keep that name.
+
 ## Runtime shape
 
 Two Docker containers: Node-RED 4.0.9 with the palettes baked in at build time
@@ -165,7 +171,7 @@ Not active today.
 
 ```bash
 # on the target box as an admin user
-cd ~/digitalhome-edge
+cd ~/digitalhome-devops-edge   # a clone from before the rename may still be ~/digitalhome-edge
 git pull
 
 # only rebuild if the Dockerfile or contrib/ palettes changed

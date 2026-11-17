@@ -34,4 +34,4 @@ systemctl enable --now dhc-door.service
 sleep 3
 systemctl --no-pager --lines=8 status dhc-door.service || true
 echo
-echo "Test the chain without the button:  sudo systemctl kill -s USR2 dhc-door"
+echo "Test the chain without the button:  sudo systemctl kill --kill-whom=main -s USR2 dhc-door"

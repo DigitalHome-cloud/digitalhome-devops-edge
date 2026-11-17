@@ -106,6 +106,9 @@ function collectFullTelemetry({ secretsDir, tier = "advanced" } = {}) {
 
     return {
         protocol_version: 1,
+        // A devops edge is dedicated to one home, linked to it in the Portal;
+        // the cloud shows it that way in Fleet (darkfactory ADR 0020).
+        edge_kind: "devops",
         edge: {
             machine_id:  readMachineId(secretsDir),
             hostname:    os.hostname(),

@@ -101,6 +101,19 @@ Raspberry Pi 3 or Zero 2 W (Wi-Fi), the existing 12 V DIN supply, a 12 V → 5 V
 USB sound card, and a small board: an optocoupler (e.g. PC817) for the call to a GPIO
 (BCM 17 by default, active low), coupling and a small amplifier (e.g. LM386) for the speaker. Low voltage only.
 
+### On a Raspberry Pi 1 (Model B / B+)
+
+It works, more slowly. Use **Raspberry Pi OS Lite 32-bit "bookworm"** (Debian 12): its armhf build still runs on
+ARMv6, and the default `ring_cmd` uses libgpiod 1 syntax, which trixie's libgpiod 2 changed. No desktop, so the
+512 MB go to Node and ffmpeg.
+
+- The bell and the voice run as on a Pi 3.
+- The camera: one core may not keep up with 640×360 at 3 frames a second. If the ring card lags, set a lighter
+  `video_cmd` in `/etc/dhc-door/config.json` (same command as the default with `scale=320:-2,fps=2`).
+- No Wi-Fi: an Ethernet cable to the door, or a USB Wi-Fi stick that works with Linux.
+- Headless set-up: an empty `ssh` file and a `userconf.txt` on the boot partition before the first start; the
+  first user may run sudo without a password, so log in with an SSH key only.
+
 ## Install on the Pi
 
 1. In the edge portal: **Scan and control → Codes**, door bell: *this is the door station adapter*, a name
@@ -108,7 +121,7 @@ USB sound card, and a small board: an optocoupler (e.g. PC817) for the call to a
 2. Copy this folder to the Pi and run `sudo bash install.sh`. It installs Node, ffmpeg, gpiod, alsa-utils and
    espeak-ng, makes the voice clips, asks for the link (input hidden), writes `/etc/dhc-door/config.json`
    (0640) and starts `dhc-door.service`.
-3. Test the chain without the button: `sudo systemctl kill -s USR2 dhc-door`. Phones with a listening code ring
+3. Test the chain without the button: `sudo systemctl kill --kill-whom=main -s USR2 dhc-door`. Phones with a listening code ring
    and show the camera; an answer is spoken at the door. Logs: `journalctl -u dhc-door -f`.
 
 `/etc/dhc-door/config.json` may also set `ring_cmd`, `video_cmd`, `play_cmd` and `clips` (see `index.js`,

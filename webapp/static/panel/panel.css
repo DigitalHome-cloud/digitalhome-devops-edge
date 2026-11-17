@@ -48,3 +48,6 @@ h2 { font-size: 15px; font-weight: 600; color: var(--dim); margin: 18px 4px 8px;
 .tone select { flex: 1 1 10rem; }
 .tone button { cursor: pointer; }
 .tone select:focus-visible, .tone button:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.awake-row { display: flex; align-items: center; gap: 8px; margin: 14px 4px 0; color: var(--dim); font-size: 15px; }
+.awake-row input { width: 22px; height: 22px; }
+video.awake { position: fixed; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; bottom: 0; left: 0; }

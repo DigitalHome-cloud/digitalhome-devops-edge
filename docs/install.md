@@ -10,13 +10,14 @@ lives in one Node-RED container with the `node-red-contrib-dhc-mcp` and
 - Ubuntu 24.04 LTS (server or desktop) with sudo.
 - Docker Engine ≥ 24 + Compose plugin ≥ 2.20 (`apt install docker.io docker-compose-v2`).
 - Network path to your Homematic CCU (`homematic-ccu`) and Philips Hue Bridge (`hue-bridge`) — or whatever devices you intend to integrate.
-- Git clone of this repo somewhere the operator can read (typically `~/digitalhome-edge` or `~/digitalhomeCloud/digitalhome-edge`).
+- Git clone of this repo somewhere the operator can read (typically `~/digitalhome-devops-edge` or `~/digitalhomeCloud/digitalhome-devops-edge`).
+- Run `git submodule update --init --recursive` after cloning — `bootstrap.sh` seeds the Node-RED project by cloning the checked-out `flows/digitalhome-flows` submodule into `/opt/dhe/node-red-data/projects/`. Without the submodule you'll drop into the Node-RED first-run wizard.
 
 ## One-shot install
 
 ```bash
-git clone https://github.com/DigitalHome-cloud/digitalhome-edge.git
-cd digitalhome-edge
+git clone https://github.com/DigitalHome-cloud/digitalhome-devops-edge.git
+cd digitalhome-devops-edge
 
 # 1. Build the image (once — bakes in both dhc-mcp and dhc-sync palettes).
 sudo docker compose -f deploy/docker-compose.yml build
@@ -46,9 +47,9 @@ without touching existing secrets.
 | `/opt/dhe/.env` | Non-secret port / home-id vars |
 | `/opt/dhe/config/dhe.config.cache` | Config cache (0600) |
 | `/opt/dhe/secrets/` | Per-secret files (0600 each): MCP token, Node-RED admin + http passwords, credential secret, machine-id fallback |
-| `/opt/dhe/node-red-data/` | Node-RED userDir (settings.js, flows, projects) |
-| `/opt/dhe/cbox/` | Digital-twin JSON-LD cache (Phase 3+) |
-| `/opt/dhe/timeseries/` | SQLite sensor buffer (Phase 5) |
+| `/opt/dhe/node-red-data/` | Node-RED userDir. `projects/digitalhome-flows/` is the active project (git-tracked, cloned from the submodule by `bootstrap.sh`). |
+| `/opt/dhe/cbox/` | `abox.jsonld` (A-Box vocabulary, seeded from `deploy/cbox/abox.jsonld`) + `cbox.jsonld` (per-home instance data, Phase 3+). |
+| `/opt/dhe/timeseries/` | Rotating JSONL data buffer. `cbox/YYYY-MM-DD.jsonl` = mapped observations; `unmapped/YYYY-MM-DD.jsonl` = review queue for missing A-Box entries. |
 | `/opt/dhe/logs/` | Structured logs |
 | `/etc/systemd/system/dhe.service` | Systemd oneshot that manages compose up/down |
 | `/usr/local/bin/dhcedge` | CLI for common operations |
@@ -133,7 +134,7 @@ sudo dhcedge show-secrets     # full credentials (sudo-gated)
 
 ```bash
 # Pull the latest code
-cd ~/digitalhome-edge
+cd ~/digitalhome-devops-edge   # a clone from before the rename may still be ~/digitalhome-edge
 git pull
 
 # Rebuild the image if the Dockerfile or contrib/ palettes changed

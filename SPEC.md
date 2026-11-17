@@ -1,4 +1,4 @@
-# digitalhome-edge — Current-State Specification
+# digitalhome-devops-edge — Current-State Specification
 
 > **This document describes what is running today.** For the *target*
 > architecture the product is migrating toward, see
@@ -99,7 +99,7 @@ device-side API keys with a `device_token` scoped to the linked SmartHome
 ## Repository Structure
 
 ```
-digitalhome-edge/
+digitalhome-devops-edge/
   contrib/
     dhc-mcp/           ← MCP server palette (in-tree; installed at build)
     dhc-sync/          ← OAuth + telemetry + dashboard palette (in-tree)
@@ -272,7 +272,38 @@ free.
 
 ---
 
+## Panel: phones as MQTT end devices (scan and control)
+
+A QR code opens only the functions of a floor, a room or a function on any phone on the
+home network; a phone at the door is the door bell. Spec:
+[`docs/specs/panel-scan-and-control.md`](docs/specs/panel-scan-and-control.md).
+
+- Second container `dhe-mosquitto` (Eclipse Mosquitto, EPL-2.0/EDL-1.0): port 1883 on loopback
+  for Node-RED, port 9001 (WebSocket) on the LAN for phones; no anonymous access, one client per code.
+- `node-red-contrib-dhc-panel` (in-tree): codes, scopes from the twin, checks; the "Panel" flow tab
+  writes to Hue and the CCU. Codes under `/api/panel/*` (basic auth) and in the web app.
+- The phone's page: `/app/panel/` (static, in `webapp/static/panel/`).
+
+| Path | Port | Auth |
+|---|---|---|
+| MQTT (Node-RED only) | 1883, loopback | broker password |
+| MQTT over WebSocket (phones) | 9001 | one name and password per QR code |
+| `/api/panel/*` | 1880 | httpNode basic auth |
+
+---
+
 ## Open Items
+
+- [x] Panel phase 1: broker, codes, tiles, family page, admin; ring and answer between phones.
+- [x] Panel phase 2: the house's own bell (Hue lights blink, Homematic chime), with settings and a test.
+- [x] Panel: first bring-up on the stage box with a real phone (port 9001 opened in ufw).
+- [x] Panel: labels in EN/DE/FR (key: the name in the CCU or Hue), the code's language on its card; the edge portal.
+- [x] Door station, software: a `door` code, pictures relayed during a ring, answers spoken at the station; the adapter `devices/door-adapter/` (tested in `--fake` mode).
+- [ ] Door station, hardware: measure the TMEZON station's 4 wires, choose the grabber, build the interface board, install the Pi.
+- [ ] Panel: real lights and the real chime set off by a ring.
+- [ ] Door opener: deliberately not wired (decision of 2026-11-11).
+- [ ] Talking to the visitor from a phone: needs HTTPS on the edge (the browser gives a page the microphone only there) and an audio hybrid on the station's audio wire.
+- [ ] The `/api/lights`, `/api/scene`, `/api/heating` flows are still stubs; the Panel tab's `write device` is the first real write path.
 
 - [x] Hue API key — registered and stored under `/opt/dhe/secrets/hue-api-key`
 - [x] Build initial Node-RED flows for Homematic + Hue
@@ -282,7 +313,16 @@ free.
 - [x] OAuth device flow client (`dhc-sync`) + state machine + dashboard UI
 - [x] Edge ↔ Cloud API spec (`docs/specs/edge-cloud-api.md`)
 - [ ] Cloud side: `POST /edge/v1/device_authorization`, `/token`, `/telemetry` — implemented in `digitalhome-cloud-darkfactory`
-- [ ] Starter flow seeded on first boot (auto-instantiate `mcp-server-config` + `dhc-sync-config` + dashboard tabs)
+- [x] Starter flow seeded on first boot (auto-instantiate `mcp-server-config` + `dhc-sync-config` + dashboard tabs)
+- [x] Projects mode wired — `bootstrap.sh` clones `flows/digitalhome-flows` into `/opt/dhe/node-red-data/projects/`; `entrypoint.sh` seeds `.config.projects.json`. Fresh boxes boot into the active project instead of the first-run wizard.
+- [x] Phase-1 data pipeline: device → A-Box filter → local JSONL buffer. Covers Hue + Homematic. See `docs/architecture.md §10 "Phase-1 pipeline"`.
+- [x] Source→T-BOX mapping layer: per-integration `deploy/cbox/mappings/*.map.json` (hue, homematic, solarman) linking native fields to canonical Brick classes; replaces the inline `dhc:sourceMap/*` in `abox.jsonld`. See `docs/specs/solarman-edge-pipeline.md §2`.
+- [x] Phase-2 SolarMan ingest: token → station discovery → 5-min realTime poll → raw (bronze) + Brick observations (silver) + `global.solar_latest` (gold, `GET /api/solar/status`). See `docs/specs/solarman-edge-pipeline.md`.
+- [ ] Phase-1 data pipeline: Matter / SmartThings source ingest (deferred).
+- [ ] Raw (bronze) tier retention/pruning job for `/timeseries/raw/*`.
+- [ ] Cloud shipment of buffered observations (batch POST of `/timeseries/cbox/*.jsonl`) — needs wire spec agreed with dark-factory cloud team.
+- [ ] Portal `/link` completion (approve/deny buttons wire the AppSync mutations, home picker). Spec: `docs/specs/portal-link-page.md`.
 - [ ] C-BOX generator + catalog dispatch inside `dhc-mcp` (Phase 3)
 - [ ] Assign room names to devices (currently all null)
 - [ ] Pipeline-based deployment: stage branch → DLAB5-W541-01, main → DLAB5-M92P-01
+- [ ] A-BOX / C-BOX naming reconciliation with umbrella platform specs (see `docs/architecture.md §12` Open Decision #7).

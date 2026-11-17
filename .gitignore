@@ -158,3 +158,21 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Home-specific discovered configuration (rooms/devices/scenes pulled from CCU/Hue).
+# Contains PII (room/person names, device serials) and the Hue bridge whitelist.
+# Lives at runtime under /opt/dhe/cbox/discovered/ — NEVER commit it to git.
+**/discovered/
+deploy/cbox/discovered/
+*.discovered.json
+
+# Generated per-home digital twin (rooms/devices/points) — PII (room/person names).
+# Runtime-only at /opt/dhe/cbox/cbox.jsonld; never commit.
+deploy/cbox/cbox.jsonld
+# The panel's codes (names of rooms and people's cards) and the broker's access file. Runtime-only under /opt/dhe.
+panel-codes.json
+dynamic-security.json
+# The label dictionary: room and device names in EN/DE/FR. Runtime-only at /opt/dhe/cbox/labels.json.
+**/cbox/labels.json
+deploy/cbox/cbox.history/
+*.cbox.jsonld

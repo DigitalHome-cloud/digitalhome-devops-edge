@@ -1,0 +1,19 @@
+{
+  "name": "digitalhome-devops-edge-webapp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Thin edge UI for digitalhome.edge — a static Gatsby SPA served by Node-RED at /app, consuming the headless /app-api/* endpoints. Onboarding + local status; the rich UX lives in the cloud Portal.",
+  "scripts": {
+    "develop": "gatsby develop",
+    "build": "gatsby build --prefix-paths",
+    "serve": "gatsby serve --prefix-paths",
+    "clean": "gatsby clean",
+    "i18n-check": "node scripts/i18n-check.mjs"
+  },
+  "dependencies": {
+    "gatsby": "^5.13.0",
+    "qrcode": "^1.5.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}

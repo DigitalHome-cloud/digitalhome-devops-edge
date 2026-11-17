@@ -9,6 +9,8 @@
 #   dhcedge start               Start the stack
 #   dhcedge stop                Stop the stack
 #   dhcedge restart             Restart the stack
+#   dhcedge build               Rebuild the image (palette/Dockerfile) + recreate container
+#   dhcedge flow-pull           Pull the latest flow into the Node-RED Project + reload
 #   dhcedge logs [service]      Tail container logs (default: node-red)
 #   dhcedge update-hosts        Generate /etc/hosts entries from config cache
 #   dhcedge show-config         Show config cache (secrets redacted)
@@ -30,6 +32,28 @@ require_sudo() {
     if [[ $EUID -ne 0 ]]; then
         die "This command requires sudo. Run: sudo dhcedge $*"
     fi
+}
+
+# Locate the repo checkout (needed for `build` — the image's build context is
+# the repo root, which holds contrib/ + deploy/nodered/Dockerfile). The deployed
+# /opt/dhe/docker-compose.yml can't build (its context lacks contrib/).
+find_repo() {
+    if [[ -n "${DHE_REPO:-}" && -f "${DHE_REPO}/deploy/docker-compose.yml" ]]; then
+        echo "$DHE_REPO"; return 0
+    fi
+    # relative to this script (works when dhcedge is run from / symlinked into the repo)
+    local self guess
+    self="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+    guess="$(cd "$(dirname "$self")/.." 2>/dev/null && pwd || true)"
+    if [[ -n "$guess" && -f "${guess}/deploy/docker-compose.yml" && -d "${guess}/contrib" ]]; then
+        echo "$guess"; return 0
+    fi
+    local d
+    for d in "$HOME/digitalhome-devops-edge" "$HOME/digitalhomeCloud/digitalhome-devops-edge" /opt/digitalhome-devops-edge \
+             "$HOME/digitalhome-edge" "$HOME/digitalhomeCloud/digitalhome-edge" /opt/digitalhome-edge; do
+        [[ -f "${d}/deploy/docker-compose.yml" && -d "${d}/contrib" ]] && { echo "$d"; return 0; }
+    done
+    return 1
 }
 
 # ── commands ─────────────────────────────────────────────────────────────────
@@ -65,7 +89,7 @@ cmd_restart() {
 }
 
 cmd_logs() {
-    local target="${1:-node-red}"
+    local target="${1:-nodered}"
     if [[ "$target" == "all" ]]; then
         docker compose -f "$COMPOSE_FILE" logs -f
     else
@@ -123,6 +147,7 @@ with open('${CONFIG_CACHE}') as f:
 REDACTED_KEYS = {
     'api_key', 'credential_secret', 'auth_token',
     'admin_password', 'http_password', 'password',
+    'email',
 }
 
 def redact(obj):
@@ -147,11 +172,110 @@ cmd_show_secrets() {
     nodered_http_user=$(cat "${secrets_dir}/nodered-http-user" 2>/dev/null || echo "dhcedge")
     nodered_http_pw=$(cat "${secrets_dir}/nodered-http-password" 2>/dev/null || echo "(unset)")
 
+    local solar_app_secret solar_link
+    solar_app_secret=$(cat "${secrets_dir}/solarman-app-secret" 2>/dev/null)
+    if [[ -s "${secrets_dir}/solarman-token.json" ]]; then
+        solar_link=$(python3 -c "import json;d=json.load(open('${secrets_dir}/solarman-token.json'));print('linked as '+d.get('email','?'))" 2>/dev/null || echo "linked")
+    else
+        solar_link="not linked (use dashboard: Connections → Solar)"
+    fi
+
     printf "MCP bearer token       %s\n" "$mcp_token"
     printf "Node-RED editor login  %s / %s\n" "$nodered_admin_user" "$nodered_admin_pw"
     printf "Node-RED /api/* login  %s / %s\n" "$nodered_http_user" "$nodered_http_pw"
+    printf "Solarman app secret    %s\n" "${solar_app_secret:-(unset)}"
+    printf "Solarman account       %s\n" "$solar_link"
     printf "\nUse in Claude Desktop config:\n"
     printf "  \"headers\": { \"Authorization\": \"Bearer %s\" }\n" "$mcp_token"
+}
+
+cmd_build() {
+    require_sudo "build"
+    command -v docker &>/dev/null || die "docker is required but not found."
+    local repo
+    repo="$(find_repo)" || die "repo checkout not found. Set DHE_REPO=/path/to/digitalhome-devops-edge and retry."
+    local repo_compose="${repo}/deploy/docker-compose.yml"
+
+    echo "Repo:    ${repo}"
+    echo "Pulling latest (repo + submodules) ..."
+    # Pull as the repo owner, not root, to keep file ownership sane.
+    local owner; owner="$(stat -c '%U' "$repo" 2>/dev/null || echo root)"
+    sudo -u "$owner" git -C "$repo" pull --recurse-submodules --ff-only \
+        || echo "WARN: git pull skipped/failed (local changes?) — building current checkout."
+
+    echo "Building image digitalhome/dhe-nodered:local from ${repo} ..."
+    docker compose -f "$repo_compose" build
+
+    # Keep the deployed compose in sync so compose/volume changes (e.g. the
+    # writable /opt/dhe/secrets mount) take effect on recreate.
+    if [[ -f "$COMPOSE_FILE" ]] && ! cmp -s "$repo_compose" "$COMPOSE_FILE"; then
+        echo "Updating ${COMPOSE_FILE} from repo ..."
+        cp "$repo_compose" "$COMPOSE_FILE"
+    fi
+
+    echo "Recreating container (new image + mounts) via dhe.service ..."
+    systemctl restart dhe.service
+    cmd_status
+}
+
+cmd_flow_pull() {
+    require_sudo "flow-pull"
+    local proj_root="${DHE_ROOT}/node-red-data/projects"
+    [[ -d "$proj_root" ]] || die "No Node-RED projects dir: ${proj_root} (Projects not enabled?)"
+
+    # The git-backed Node-RED Project = the dir containing a .git.
+    local proj
+    proj="$(find "$proj_root" -maxdepth 2 -name .git -printf '%h\n' 2>/dev/null | head -1)"
+    [[ -n "$proj" ]] || die "No git-backed project under ${proj_root}."
+
+    local owner; owner="$(stat -c '%U' "$proj" 2>/dev/null || echo root)"
+    echo "Pulling flow in ${proj} (as ${owner}) ..."
+    sudo -u "$owner" git -C "$proj" pull --ff-only \
+        || die "git pull failed — the project has local (editor) changes. Resolve in the Node-RED Projects UI, then retry."
+
+    echo "Reloading Node-RED flows (restart) ..."
+    systemctl restart dhe.service
+    cmd_status
+    echo ""
+    echo "Flow updated. Open the dashboard → Pairing page to pair."
+}
+
+cmd_webapp_pull() {
+    # Build (if the toolchain is present) and deploy the edge web app (Gatsby) to
+    # /opt/dhe/webapp, which Node-RED serves statically at /app. No sudo and no
+    # container restart needed — /opt/dhe/webapp is owned by uid 1000 and httpStatic
+    # serves straight from the bind-mount.
+    local repo webdir dest src
+    repo="$(find_repo)" || die "repo checkout not found. Set DHE_REPO=/path/to/digitalhome-devops-edge and retry."
+    webdir="${repo}/webapp"
+    [[ -d "$webdir" ]] || die "no webapp/ directory in ${repo}"
+    dest="${DHE_ROOT}/webapp"
+    mkdir -p "$dest" 2>/dev/null || true
+    [[ -w "$dest" ]] || die "${dest} not writable — run: sudo chown -R 1000:1000 ${dest}"
+
+    echo "Pulling ${repo} ..."
+    git -C "$repo" pull --ff-only 2>/dev/null || echo "WARN: git pull skipped (local changes?) — deploying current checkout."
+
+    src="${webdir}/public-demo"
+    if command -v npm &>/dev/null; then
+        echo "Building Gatsby app (npm install + gatsby build --prefix-paths) — this can take a few minutes ..."
+        if ( cd "$webdir" && npm install --no-audit --no-fund --loglevel=error && npx gatsby build --prefix-paths ); then
+            src="${webdir}/public"
+        else
+            echo "WARN: gatsby build failed — falling back to the prebuilt public-demo."
+        fi
+    else
+        echo "npm not found — deploying the prebuilt public-demo (static)."
+    fi
+    [[ -d "$src" ]] || die "nothing to deploy: ${src} is missing"
+
+    echo "Deploying ${src} -> ${dest} ..."
+    if command -v rsync &>/dev/null; then
+        rsync -a --delete "${src}/" "${dest}/"
+    else
+        rm -rf "${dest:?}/"* && cp -r "${src}/." "${dest}/"
+    fi
+    echo "Edge web app updated — open http://<edge>:${NODERED_PORT:-1880}/app (no restart needed)."
 }
 
 cmd_help() {
@@ -162,6 +286,9 @@ cmd_help() {
     echo "  start               Start the stack (requires sudo)"
     echo "  stop                Stop the stack (requires sudo)"
     echo "  restart             Restart the stack (requires sudo)"
+    echo "  build               Rebuild the image + recreate the container (requires sudo)"
+    echo "  flow-pull           Pull latest flow into the Node-RED Project + reload (requires sudo)"
+    echo "  webapp-pull         Build the Gatsby edge app + deploy to /app (no sudo, no restart)"
     echo "  logs [service]      Follow container logs (default: node-red)"
     echo "  update-hosts        Regenerate /etc/hosts from config cache (requires sudo)"
     echo "  show-config         Show config cache (secrets redacted)"
@@ -181,7 +308,10 @@ case "$1" in
     start)        cmd_start "$@" ;;
     stop)         cmd_stop "$@" ;;
     restart)      cmd_restart "$@" ;;
-    logs)         shift; cmd_logs "${1:-node-red}" ;;
+    build)        cmd_build ;;
+    flow-pull)    cmd_flow_pull ;;
+    webapp-pull)  cmd_webapp_pull ;;
+    logs)         shift; cmd_logs "${1:-nodered}" ;;
     update-hosts) cmd_update_hosts ;;
     show-config)  cmd_show_config ;;
     show-secrets) cmd_show_secrets ;;

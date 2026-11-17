@@ -111,14 +111,52 @@ if [ -n "$HTTP_PW" ] && ! grep -qE '^[[:space:]]*httpNodeMiddleware:' "$SETTINGS
     ' "$SETTINGS" > "${SETTINGS}.tmp" && mv "${SETTINGS}.tmp" "$SETTINGS"
 fi
 
-# Enable Projects — the default has `enabled: false` under editorTheme.projects
-sed -i -E "0,/enabled: false,/{s/enabled: false,/enabled: true,/}" "$SETTINGS"
+# httpStatic — serve the edge web app (Gatsby static build) at /app from the
+# read-only /webapp mount. Idempotent: only insert if not already present.
+if ! grep -qE '^[[:space:]]*httpStatic:' "$SETTINGS"; then
+    log "inserting httpStatic (/webapp -> /app)"
+    HS_BLOCK='    httpStatic: [{ path: "/webapp", root: "/app/" }],'
+    awk -v block="$HS_BLOCK" '
+        /module\.exports[[:space:]]*=[[:space:]]*\{/ && !ins { print; print block; ins=1; next }
+        { print }
+    ' "$SETTINGS" > "${SETTINGS}.tmp" && mv "${SETTINGS}.tmp" "$SETTINGS"
+fi
 
-# Seed the starter flow on very first boot. If /data/flows.json exists,
-# leave it alone — the operator's own flows own the runtime from that point.
+# Enable Projects — the default has `enabled: false` under editorTheme.projects.
+# The stock settings.js has several `enabled: false` blocks (runtimeState, projects,
+# …); an unanchored "first match" sed flips the wrong one and leaves Projects off,
+# so target the projects block specifically. Idempotent (no-op once true).
+awk '
+    /projects:[[:space:]]*\{/ { inproj=1 }
+    inproj && /enabled:[[:space:]]*false/ { sub(/enabled:[[:space:]]*false/, "enabled: true"); inproj=0 }
+    { print }
+' "$SETTINGS" > "${SETTINGS}.tmp" && mv "${SETTINGS}.tmp" "$SETTINGS"
+
+# Seed .config.projects.json so Node-RED boots directly into the flows project
+# and skips the first-run wizard. Requires bootstrap.sh to have cloned the
+# flows submodule into /data/projects/digitalhome-flows/ first. If the project
+# isn't there we leave things alone — the operator will hit the wizard and can
+# import the project by hand.
+PROJECTS_CFG=/data/.config.projects.json
+if [ ! -f "$PROJECTS_CFG" ] && [ -d /data/projects/digitalhome-flows/.git ]; then
+    log "seeding .config.projects.json (active project = digitalhome-flows)"
+    cat > "$PROJECTS_CFG" <<'EOF'
+{
+    "activeProject": "digitalhome-flows",
+    "projects": {
+        "digitalhome-flows": {}
+    }
+}
+EOF
+fi
+
+# Seed the starter flow on very first boot as a fallback. If Projects mode is
+# active with an activeProject, Node-RED reads from /data/projects/<name>/
+# and this file is ignored. Kept around one release for boxes that couldn't
+# seed the project (submodule not checked out, offline, etc.).
 STARTER_FLOW=/usr/local/share/dhe/starter-flow.json
 if [ ! -f /data/flows.json ] && [ -r "$STARTER_FLOW" ]; then
-    log "seeding /data/flows.json from starter-flow.json"
+    log "seeding /data/flows.json from starter-flow.json (fallback)"
     cp "$STARTER_FLOW" /data/flows.json
 fi
 

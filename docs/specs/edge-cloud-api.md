@@ -2,7 +2,7 @@
 
 **Status:** Draft v0.2 (rewritten around RFC 8628 device authorization grant)
 **Owner (cloud side):** dark factory team (`digitalhome-cloud-darkfactory/`)
-**Owner (edge side):** `digitalhome-edge`
+**Owner (edge side):** `digitalhome-devops-edge`
 **Date:** 2026-07-01
 
 ## Change log

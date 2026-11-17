@@ -4,6 +4,7 @@
 # - device palettes (CCU, Hue, Dashboard v2)
 # - node-red-contrib-dhc-mcp     (MCP server surface for Claude)
 # - node-red-contrib-dhc-sync    (OAuth device flow + telemetry to cloud)
+# - node-red-contrib-dhc-panel   (phones as MQTT end devices: scan and control)
 #
 # Both dhc-* palettes are copied from the repo checkout at build time and
 # installed as local packages — no npm publish, no external registry.
@@ -14,20 +15,25 @@ USER root
 WORKDIR /usr/src/node-red
 
 # Third-party palettes — pinned versions (audit M-3, no ^ drift).
+# node-red-node-sqlite provides the `sqlite`/`sqlitedb` types used by the device
+# inventory flow; without it Node-RED blocks on "waiting for missing types".
 RUN npm install --no-audit --no-fund --save --unsafe-perm \
       node-red-contrib-ccu@3.4.2 \
       node-red-contrib-huemagic@4.2.2 \
       @flowfuse/node-red-dashboard@1.30.2 \
+      node-red-node-sqlite@1.1.0 \
     && npm cache clean --force
 
 # In-tree palettes — build context is the repo root; contrib/ lives beside deploy/.
 # The two .dockerignore files inside each contrib skip node_modules on copy.
 COPY --chown=node-red:node-red contrib/dhc-mcp  /opt/dhe-src/dhc-mcp
 COPY --chown=node-red:node-red contrib/dhc-sync /opt/dhe-src/dhc-sync
+COPY --chown=node-red:node-red contrib/dhc-panel /opt/dhe-src/dhc-panel
 
 RUN npm install --no-audit --no-fund --save --unsafe-perm \
       /opt/dhe-src/dhc-mcp \
       /opt/dhe-src/dhc-sync \
+      /opt/dhe-src/dhc-panel \
     && npm cache clean --force
 
 # Entrypoint bcrypts secrets into settings.js and seeds the starter flow

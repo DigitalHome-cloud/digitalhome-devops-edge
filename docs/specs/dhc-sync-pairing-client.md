@@ -1,7 +1,7 @@
 # dhc-sync — Pairing Client Changes (two-step + writable secrets)
 
 **Status:** Draft v0.1
-**Owner:** `digitalhome-edge` team
+**Owner:** `digitalhome-devops-edge` team
 **Date:** 2026-07-03
 **Depends on:** `docs/specs/edge-cloud-api.md` (wire spec) — cloud side is **live on stage**.
 **Related (cloud):** `digitalhome-cloud-darkfactory/docs/specs/DH-SPEC-100-edge-cloud-registration.md`

@@ -1,0 +1,15 @@
+{
+    "@context": {
+        "dhc": "https://schema.digitalhome.cloud/v0#"
+    },
+
+    "@graph": [
+        {
+            "@id": "dhc:v0",
+            "@type": "dhc:AboxVersion",
+            "dhc:version": "0.2.0",
+            "dhc:updated": "2026-07-11",
+            "dhc:note": "DEPRECATED as the source→Brick map. The inline dhc:capability/* and dhc:sourceMap/* entries were migrated to per-source mapping files under cbox/mappings/ (mappings-manifest.json + {hue,homematic,solarman}.map.json), which link native fields to the canonical T-BOX (repos/core/schema/tbox/Brick+extensions.ttl). The data pipeline now builds global.aboxIndex from those files, not this one. This stub is kept only so existing bootstrap/deploy references resolve; it carries no mappings."
+        }
+    ]
+}

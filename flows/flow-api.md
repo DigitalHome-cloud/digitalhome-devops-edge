@@ -64,6 +64,40 @@ and writes to the `device` table. Returns `{synced: {ccu: N, hue: M, total: N+M}
 
 ---
 
+## Solar (PV)
+
+| Method | Endpoint | Returns |
+|---|---|---|
+| GET | `/api/solar/status` | Latest Solarman realtime snapshot: `{station_id, ts, data, observations}` from `global.solar_latest`. `503 {error}` until the first poll lands. |
+
+Backed by the Solarman ingest flow on `dp-tab` (token → station discovery → 5-min realTime
+poll). Raw responses land in `/timeseries/raw/solarman/`; Brick observations in
+`/timeseries/cbox/`. See `docs/specs/solarman-edge-pipeline.md`.
+
+---
+
+## Panel (scan and control)
+
+Phones as MQTT end devices: one code per QR. Spec: `docs/specs/panel-scan-and-control.md`.
+Registered by the `dhc-panel` node (tab "Panel"), behind the same basic auth as the rest of `/api/*`.
+
+| Method | Endpoint | Body | Returns |
+|---|---|---|---|
+| GET | `/api/panel/codes` | — | `{broker: {connected}, ws_port, codes: [{id, name, scope, bell, kind, lang, online, tiles}], catalog: {floors, rooms, kinds, tiles}}` |
+| POST | `/api/panel/codes` | `{name, scope: {floors, rooms, kinds, none}, bell, kind, lang}` | `{code, secret, ws_port}`. The secret is returned once and not kept. `kind`: `panel` (a phone), `door` (the door station adapter: rings, sends pictures during a ring, no tiles) |
+| DELETE | `/api/panel/codes/{id}` | — | Revokes the code and closes its phone's connection |
+| GET | `/api/panel/bell` | — | `{bell: {lights, chimes}, options: {lights: [{id, label, room}], chimes: [{id, label}]}}` |
+| PUT | `/api/panel/bell` | `{lights: [tile id], chimes: [chime id]}` | What a ring sets off in the house: Hue lights blink, chimes sound |
+| POST | `/api/panel/bell/test` | — | Sets them off once without ringing the phones; `{targets: n}` |
+| GET | `/api/panel/labels` | — | `{langs: ["en","de","fr"], entries: [{original, names, where: ["room"\|"tile"\|"chime"\|"other"], rooms, en, de, fr}]}`: every word of the home; `original` is the key, `names` the names as the CCU or Hue shows them (ID and channel); `where: []` = translated but no longer in the twin |
+| PUT | `/api/panel/labels` | `{"<original>": {en, de, fr}}` | `{changed: n}`. `""` removes a language; the phones get the new words at once |
+
+The phones themselves use MQTT (broker port 9001, WebSocket), not HTTP: topics `dhc/panel/<id>/…` in the spec.
+The page they open is static: `/app/panel/#c=<id>.<secret>&l=<lang>` (`l`: the code's language, so the first
+screen speaks it before the broker answers).
+
+---
+
 ## Cloud Sync
 
 | Method | Endpoint | Description |

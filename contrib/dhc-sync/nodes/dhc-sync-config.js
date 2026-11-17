@@ -71,6 +71,7 @@ module.exports = function (RED) {
         async function runDeviceFlow() {
             try {
                 const deviceInfo = {
+                    edge_kind:   "devops",   // dedicated to one home (darkfactory ADR 0020)
                     machine_id:  sysinfo.readMachineId(node.secretsDir),
                     hostname:    require("os").hostname(),
                     lan_ip:      sysinfo.readPrimaryNic().ip,

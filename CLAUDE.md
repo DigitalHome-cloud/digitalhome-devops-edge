@@ -11,14 +11,22 @@ Application layer for **digitalhome.edge** — the local edge server running on
 - `docs/adr/0001-dhe-alignment.md` — locked decisions + phased migration plan.
 - `docs/specs/edge-cloud-api.md` — edge ↔ cloud wire spec (OAuth device flow).
 
+**Scope (ADR-0002):** run and maintenance of a home — devices, phones, pairing,
+health, updates, backups — and, over time, the other digitalhome.cloud instances
+in the home (pro edge, Mediathek edge). Design is *not* done here; that is
+`digitalhome-pro-edge`. The repo was `digitalhome-edge`; the hostname, OAuth
+client id, MCP server name and `/opt/dhe` deliberately keep that name.
+
 ## Runtime shape
 
-One Docker container: Node-RED 4.0.9 with the palettes baked in at build time.
-`dhe.service` (systemd oneshot) drives `docker compose up -d/down`. All state
-under `/opt/dhe/`.
+Two Docker containers: Node-RED 4.0.9 with the palettes baked in at build time
+(`dhe-nodered`), and the Mosquitto MQTT broker for phones as end devices
+(`dhe-mosquitto`). `dhe.service` (systemd oneshot) drives
+`docker compose up -d/down`. All state under `/opt/dhe/`.
 
 - `contrib/dhc-mcp/` — MCP server surface in Node-RED (config node + tool/resource nodes + response node)
 - `contrib/dhc-sync/` — OAuth device flow client + dashboard pairing UI + telemetry loop
+- `contrib/dhc-panel/` — scan and control: one MQTT client per QR code, scopes from the twin, checked device commands for the flow (`docs/specs/panel-scan-and-control.md`)
 
 ## The golden rule
 
@@ -39,8 +47,12 @@ under `/opt/dhe/`.
 contrib/
   dhc-mcp/       MCP palette — config node + tool-in/resource-in/response
   dhc-sync/      OAuth device flow + dashboard pairing UI + telemetry loop
+  dhc-panel/     Scan and control — codes, scopes, checks (phones over MQTT)
+devices/
+  door-adapter/  an analog outdoor door station as an MQTT device (runs on a Raspberry Pi)
 deploy/
-  docker-compose.yml   single node-red service
+  docker-compose.yml   node-red + mosquitto
+  mosquitto/           broker config (no anonymous access, per-code rules)
   dhe.service          systemd oneshot
   bootstrap.sh         seeds /opt/dhe/ layout
   nodered/
@@ -77,10 +89,30 @@ cache under `devices` and gets written to `/etc/hosts` by `dhcedge update-hosts`
 
 - `/opt/dhe/secrets/` — one file per secret (0600 each): `mcp-auth-token`,
   `nodered-admin-password`, `nodered-http-password`, `nodered-credential-secret`,
-  `device-token`, `edge-id`, `home-id`, `machine-id`. Gitignored root; nothing
-  from this dir belongs in commits.
+  `device-token`, `edge-id`, `home-id`, `machine-id`, plus integration link
+  secrets `solarman-app-secret`, `solarman-token.json`, `ccu.json` (CCU IP +
+  API token), `hue.json` (Hue IP + API key). Gitignored root; nothing from this
+  dir belongs in commits.
 - `/opt/dhe/config/dhe.config.cache` — non-secret settings + hue api key.
   0600. Gitignored.
+- `/opt/dhe/cbox/discovered/{ccu,hue}.json` — **home structure downloaded from
+  the devices** (rooms, functions, devices, scenes, plus the raw CCU XML / Hue
+  bridge config). Written 0600 at runtime by the `POST /app-api/config-pull`
+  flow. Contains **PII** (room/person names, device serials) and the **Hue
+  bridge whitelist** (API keys). **Never commit.** Runtime-only under `/opt/dhe`;
+  `.gitignore` blocks `**/discovered/`, `deploy/cbox/discovered/`,
+  `*.discovered.json` as a backstop.
+- `/opt/dhe/cbox/cbox.jsonld` — the **generated digital twin (C-BOX)** built from the
+  discovered config by `POST /app-api/cbox-generate` (rooms → devices → Brick points).
+  Carries the same room/person-name PII; written 0600, versioned to `cbox.history/`,
+  runtime-only. **Never commit** (`.gitignore` blocks `deploy/cbox/cbox.jsonld`,
+  `cbox.history/`, `*.cbox.jsonld`).
+- `/opt/dhe/cbox/panel-codes.json` — the panel's codes (names, scopes; no secrets) and
+  `/opt/dhe/mosquitto/data/dynamic-security.json` — the broker's clients and password
+  hashes; `/opt/dhe/cbox/labels.json` — the label dictionary (room and device names in
+  EN/DE/FR). Runtime-only, 0600. **Never commit**; `/opt/dhe/secrets/mqtt-nodered-password`
+  is Node-RED's password on the broker. A code's secret exists only in its QR code:
+  never log or print one.
 - Node-RED credentials are encrypted in `flows_cred.json` under the userDir
   (never committed; encryption key is in `credential-secret` above).
 - Never put device IPs, API keys, tokens, or passwords in committed files.
@@ -139,7 +171,7 @@ Not active today.
 
 ```bash
 # on the target box as an admin user
-cd ~/digitalhome-edge
+cd ~/digitalhome-devops-edge   # a clone from before the rename may still be ~/digitalhome-edge
 git pull
 
 # only rebuild if the Dockerfile or contrib/ palettes changed
@@ -165,6 +197,12 @@ sudo dhcedge show-secrets     # MCP token + Node-RED credentials
 Full install / bring-up procedure lives at `docs/install.md`.
 
 ## Web UX
+
+The **edge portal** at `:1880/app/` (`webapp/`, Gatsby, D-LAB-5 design: a rail and
+panels, EN/DE/FR) is where the edge is set up: devices, the twin, the network, the
+phones' codes, the door bell and the label dictionary. Its own words are keyed on the
+English text (`webapp/src/i18n/`, check with `npm run i18n-check`); the home's words are
+keyed on the name from the CCU or Hue (`/api/panel/labels`).
 
 Operational UI (device control, scenes, sensors) → **Node-RED Dashboard v2**
 (`@flowfuse/node-red-dashboard`) at `:1880/dashboard`. No separate frontend

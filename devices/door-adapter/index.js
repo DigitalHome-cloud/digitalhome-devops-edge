@@ -21,7 +21,9 @@
 
 // Listen for SIGUSR2 before anything else loads: Node's default for it is to
 // exit, so a test ring sent while the adapter is still starting stopped it.
-// Until the link is set up, a ring is only logged.
+// Until the link is set up, a ring is only logged. Node's own start comes
+// before any of this (about 3 s on a Raspberry Pi 1): a signal then still
+// stops it, so test once "linked" is in the log, or with the edge's Ring test.
 let onUsr2 = () => console.log(new Date().toISOString() + " ring (signal) while starting: ignored");
 process.on("SIGUSR2", () => onUsr2());
 

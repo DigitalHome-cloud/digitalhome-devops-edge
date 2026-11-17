@@ -48,6 +48,22 @@ A code is one client of the broker (Mosquitto Dynamic Security): its id is the u
 - **Revoking** deletes the broker client, which closes its connection; the page says the code is no longer valid.
 - Role changes disconnect a client, so on a restart the node touches only roles whose rules really differ.
 
+## NFC tags
+
+A code's link fits on an NFC sticker as well as in a QR code (NTAG213, about €0.20; "on-metal" tags on a metal
+box). Any phone with NFC opens it without an app, Android and iPhone XS or newer alike; the card and the tag can
+go side by side, or the card on the sticker.
+
+- **The same link, the same secret, the same revocation.** A tag is a card that is read by touch: whoever taps
+  it gets the code's scope. A lost or copied tag is revoked and made anew.
+- **Written with a writer app.** The edge's page is plain http on the home network, and browsers let only https
+  pages write tags (Web NFC), so *Codes* shows "Copy link for an NFC tag" beside the new cards, never printed.
+- **Locked after writing**, so nobody can put another link on it.
+- **Placement follows the scope:** the room it switches, never outside the house. A door code never goes on a
+  tag: its link is pasted into the Pi only.
+- **Later, if copied links matter:** NTAG 424 DNA tags compute a new signature on each tap (SUN); the edge could
+  then refuse a link that was read off a tag and replayed. Not needed yet.
+
 ## Tiles
 
 Read from the twin (`/cbox/cbox.jsonld`, re-read when the file changes) by a **whitelist**

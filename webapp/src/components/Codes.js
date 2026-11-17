@@ -210,11 +210,14 @@ export function Bell({ active }) {
     setBell({ ...bell, bell: next });
     panelApi("PUT", "bell", next).then(setBell, setErr);
   };
+  const ring = () => panelApi("POST", "bell/ring").then((j) => setMsg(t("Rang: {n} phone(s) listening", { n: j.listeners })
+      + (j.targets ? " · " + t("sent to {n}", { n: j.targets }) : "") + (j.camera ? " · " + t("the door camera was asked for pictures") : "")), (e) => setMsg(e.message));
   const test = () => panelApi("POST", "bell/test").then((j) => setMsg(j.targets ? t("sent to {n}", { n: j.targets }) : t("nothing chosen")), (e) => setMsg(e.message));
   return (
     <section className="app-panel">
       <h2 className="app-panel__title">{t("When the door bell rings")}<span className="app-shell__spacer" />
-        <button className="app-button app-button--ghost app-button--small" onClick={test}>{t("Test")}</button></h2>
+        <button className="app-button app-button--small" onClick={ring} title={t("Rings like the door station: the listening phones, the lights and chime, the door camera")}>{t("Ring test")}</button>
+        <button className="app-button app-button--ghost app-button--small" onClick={test} title={t("Only the lights and chime chosen below")}>{t("Test")}</button></h2>
       <p className="app-panel__hint">{t("Phones with a listening code always ring. Choose what else in the house announces it: Hue lights blink for 15 seconds, a Homematic chime sounds.")}</p>
       {msg && <p className="app-msg app-msg--busy">{msg}</p>}
       {err && <p className="app-msg app-msg--err">✗ {err.message}</p>}

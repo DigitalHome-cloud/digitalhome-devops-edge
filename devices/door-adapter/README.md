@@ -121,8 +121,10 @@ ARMv6, and the default `ring_cmd` uses libgpiod 1 syntax, which trixie's libgpio
 2. Copy this folder to the Pi and run `sudo bash install.sh`. It installs Node, ffmpeg, gpiod, alsa-utils and
    espeak-ng, makes the voice clips, asks for the link (input hidden), writes `/etc/dhc-door/config.json`
    (0640) and starts `dhc-door.service`.
-3. Test the chain without the button: `sudo systemctl kill --kill-whom=main -s USR2 dhc-door`. Phones with a listening code ring
-   and show the camera; an answer is spoken at the door. Logs: `journalctl -u dhc-door -f`.
+3. Test the chain without the button: `sudo systemctl kill --kill-whom=main -s USR2 dhc-door`, or **Ring test** on the edge's
+   Door bell page. Phones with a listening code ring and show the camera; an answer is spoken at the door. Logs:
+   `journalctl -u dhc-door -f`. Send the signal only once the log says `linked`: in Node's first seconds (about 3 s on a
+   Raspberry Pi 1, before the adapter's code runs) it still stops the adapter, and systemd starts it again.
 
 `/etc/dhc-door/config.json` may also set `ring_cmd`, `video_cmd`, `play_cmd` and `clips` (see `index.js`,
 DEFAULTS), e.g. another GPIO or `-i /dev/video1`. The phones reach the edge on port 9001; so does the adapter.

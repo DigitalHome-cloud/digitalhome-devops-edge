@@ -15,7 +15,7 @@
 
 function tinymqtt(o) {
   var enc = new TextEncoder(), dec = new TextDecoder();
-  var ws = null, up = false, closed = false, wait = 1000, ping = 0, buf = new Uint8Array(0), packetId = 1, subs = [];
+  var ws = null, up = false, closed = false, wait = 1000, ping = 0, timer = 0, buf = new Uint8Array(0), packetId = 1, subs = [];
   var keepalive = o.keepalive || 30;
 
   function str(s) { var b = enc.encode(s), out = new Uint8Array(b.length + 2); out[0] = b.length >> 8; out[1] = b.length & 255; out.set(b, 2); return out; }
@@ -83,7 +83,7 @@ function tinymqtt(o) {
     var was = up; up = false;
     if (closed) return;
     if ((was || why === 'error') && o.onDown) o.onDown(why);
-    setTimeout(open, wait); wait = Math.min(wait * 2, 15000);
+    clearTimeout(timer); timer = setTimeout(open, wait); wait = Math.min(wait * 2, 15000);
   }
 
   open();
@@ -91,6 +91,16 @@ function tinymqtt(o) {
     subscribe: function (topic) { subs.push(topic); if (up) sendSub(topic); },
     publish: function (topic, text, retain) { if (!up) return false; raw(packet(0x30 | (retain ? 1 : 0), [str(topic), enc.encode(text || '')])); return true; },
     isUp: function () { return up; },
+    // connect again now, on a fresh socket: after the phone slept, the old one
+    // may be dead without having said so, and a waiting retry may be minutes late
+    kick: function () {
+      if (closed) return;
+      clearTimeout(timer); clearInterval(ping); wait = 1000;
+      if (ws) { ws.onclose = null; ws.onmessage = null; try { ws.close(); } catch (e) { /* already gone */ } }
+      var was = up; up = false;
+      if (was && o.onDown) o.onDown('lost');
+      open();
+    },
     // no DISCONNECT packet: the broker then publishes the last will, so the edge sees the phone go
     close: function () { closed = true; clearInterval(ping); if (ws) ws.close(); }
   };

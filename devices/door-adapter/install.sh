@@ -34,4 +34,5 @@ systemctl enable --now dhc-door.service
 sleep 3
 systemctl --no-pager --lines=8 status dhc-door.service || true
 echo
-echo "Test the chain without the button:  sudo systemctl kill --kill-whom=main -s USR2 dhc-door"
+echo "Test the chain without the button, once the log says \"linked\" (journalctl -u dhc-door -f):"
+echo "  sudo systemctl kill --kill-whom=main -s USR2 dhc-door      (or Ring test on the edge's Door bell page)"

@@ -12,17 +12,17 @@ var TEXTS = {
     empty: 'Nothing to switch here.', on: 'on', off: 'off', away: 'not reachable', open: 'open', closed: 'closed', ring: 'Ring', rung: 'I have rung.', nobody: 'I have rung. Please wait.',
     rings: 'is ringing', door: 'At the door', coming: 'I am coming', wait: 'One moment', leave: 'Leave it at the door', close: 'Close',
     a_coming: 'Someone is coming.', a_wait: 'One moment, please.', a_leave: 'Please leave it at the door.', answered: 'answered', listen: 'This phone rings with the door bell while this page is open.', sound: 'Tap once so the bell can sound',
-    tone: 'Ring tone', test: 'Test', t_dingdong: 'Ding-dong', t_bell: 'Classic bell', t_chime: 'Soft chime', t_westminster: 'Westminster', t_silent: 'Vibrate only' },
+    tone: 'Ring tone', test: 'Test', awake: 'Keep the screen on', awakeNo: 'This phone cannot keep its screen on from the page: set the screen timeout in its settings.', t_dingdong: 'Ding-dong', t_bell: 'Classic bell', t_chime: 'Soft chime', t_westminster: 'Westminster', t_silent: 'Vibrate only' },
   de: { up: 'verbunden', down: 'keine Verbindung', nocode: 'Diese Adresse hat keinen Code. Bitte den QR-Code noch einmal scannen.', refused: 'Dieser Code gilt nicht mehr. Bitte einen neuen geben lassen.',
     empty: 'Hier gibt es nichts zu schalten.', on: 'an', off: 'aus', away: 'nicht erreichbar', open: 'offen', closed: 'zu', ring: 'Klingeln', rung: 'Ich habe geklingelt.', nobody: 'Ich habe geklingelt. Bitte warten.',
     rings: 'klingelt', door: 'An der Tür', coming: 'Ich komme', wait: 'Einen Moment', leave: 'Bitte abstellen', close: 'Schließen',
     a_coming: 'Es kommt jemand.', a_wait: 'Einen Moment, bitte.', a_leave: 'Bitte vor der Tür abstellen.', answered: 'hat geantwortet', listen: 'Dieses Handy klingelt mit, solange diese Seite offen ist.', sound: 'Einmal tippen, damit die Klingel zu hören ist',
-    tone: 'Klingelton', test: 'Testen', t_dingdong: 'Ding-Dong', t_bell: 'Klassische Glocke', t_chime: 'Sanfter Gong', t_westminster: 'Westminster', t_silent: 'Nur vibrieren' },
+    tone: 'Klingelton', test: 'Testen', awake: 'Bildschirm anlassen', awakeNo: 'Dieses Handy kann den Bildschirm nicht von der Seite aus anlassen: Bildschirm-Timeout in den Einstellungen setzen.', t_dingdong: 'Ding-Dong', t_bell: 'Klassische Glocke', t_chime: 'Sanfter Gong', t_westminster: 'Westminster', t_silent: 'Nur vibrieren' },
   fr: { up: 'connecté', down: 'pas de lien', nocode: 'Cette adresse n\'a pas de code. Scannez de nouveau le code QR.', refused: 'Ce code n\'est plus valable. Demandez-en un nouveau.',
     empty: 'Rien à commander ici.', on: 'allumé', off: 'éteint', away: 'injoignable', open: 'ouvert', closed: 'fermé', ring: 'Sonner', rung: 'J\'ai sonné.', nobody: 'J\'ai sonné. Merci de patienter.',
     rings: 'sonne', door: 'À la porte', coming: 'J\'arrive', wait: 'Un instant', leave: 'Déposez-le devant la porte', close: 'Fermer',
     a_coming: 'Quelqu\'un arrive.', a_wait: 'Un instant, s\'il vous plaît.', a_leave: 'Merci de le déposer devant la porte.', answered: 'a répondu', listen: 'Ce téléphone sonne avec la sonnette tant que cette page est ouverte.', sound: 'Touchez une fois pour entendre la sonnette',
-    tone: 'Sonnerie', test: 'Essayer', t_dingdong: 'Ding-dong', t_bell: 'Cloche classique', t_chime: 'Carillon doux', t_westminster: 'Westminster', t_silent: 'Vibreur seul' }
+    tone: 'Sonnerie', test: 'Essayer', awake: 'Garder l\'écran allumé', awakeNo: 'Ce téléphone ne peut pas garder l\'écran allumé depuis la page : réglez la mise en veille dans ses paramètres.', t_dingdong: 'Ding-dong', t_bell: 'Cloche classique', t_chime: 'Carillon doux', t_westminster: 'Westminster', t_silent: 'Vibreur seul' }
 };
 var ICONS = { light: '💡', switch: '🔌', blind: '🪟', heating: '🌡️' };
 
@@ -104,7 +104,9 @@ function paint() {
     if (rooms.length > 1 || r) main.appendChild(el('h2', '', r || '·'));
     var grid = el('div', 'tiles'); byRoom[r].forEach(function (tile) { grid.appendChild(tileNode(tile)); }); main.appendChild(grid);
   });
-  if (scope.bell === 'listen') { main.appendChild(tonePicker()); note(audio ? t('listen') : t('sound')); }
+  if (scope.bell === 'listen') main.appendChild(tonePicker());
+  main.appendChild(awakeRow());
+  if (scope.bell === 'listen') note(audio ? t('listen') : t('sound'));
   else if (!scope.tiles.length && scope.bell !== 'ring') note(t('empty'));
   else note('');
   window.scrollTo(0, keep);
@@ -148,6 +150,56 @@ function dingDong() {
     o.connect(g); g.connect(audio.destination); o.start(at); o.stop(at + n[2] + 0.1);
   });
 }
+
+// ── the screen stays on ─────────────────────────────────────────────────────
+// A phone whose screen locks stops hearing the bell. On https the browser's
+// Wake Lock does it; this page is plain http on the home network, where it is
+// not offered, so a tiny silent video plays in a loop, which keeps the screen
+// on in Chrome and Safari. Chosen per phone and kept in its browser.
+var AWAKE_KEY = 'dhc.panel.awake', wakeLock = null, wakeVideo = null;
+function awakeWanted() { try { return localStorage.getItem(AWAKE_KEY) === 'on'; } catch (e) { return false; } }
+function setAwakeWanted(on) { try { localStorage.setItem(AWAKE_KEY, on ? 'on' : 'off'); } catch (e) { /* until the page closes */ } }
+function keepAwake() {
+  if (!awakeWanted()) return Promise.resolve(true);
+  if (navigator.wakeLock && window.isSecureContext) {
+    if (wakeLock && !wakeLock.released) return Promise.resolve(true);
+    return navigator.wakeLock.request('screen').then(function (l) { wakeLock = l; return true; }, function () { return false; });
+  }
+  if (!wakeVideo) {
+    wakeVideo = document.createElement('video');
+    wakeVideo.muted = true; wakeVideo.loop = true; wakeVideo.setAttribute('playsinline', ''); wakeVideo.setAttribute('muted', '');
+    wakeVideo.className = 'awake';
+    ['webm', 'mp4'].forEach(function (k) { var s = document.createElement('source'); s.src = 'awake.' + k; s.type = 'video/' + k; wakeVideo.appendChild(s); });
+    document.body.appendChild(wakeVideo);
+  }
+  var p = wakeVideo.play();
+  return p && p.then ? p.then(function () { return true; }, function () { return false; }) : Promise.resolve(true);
+}
+function letSleep() {
+  if (wakeLock) { wakeLock.release().catch(function () {}); wakeLock = null; }
+  if (wakeVideo) wakeVideo.pause();
+}
+function awakeRow() {
+  var box = el('label', 'awake-row'), box2 = el('input');
+  box2.type = 'checkbox'; box2.checked = awakeWanted();
+  box2.onchange = function () {
+    setAwakeWanted(box2.checked);
+    if (!box2.checked) { letSleep(); return; }
+    keepAwake().then(function (ok) { if (!ok) note(t('awakeNo')); });
+  };
+  box.appendChild(box2); box.appendChild(document.createTextNode(' ' + t('awake')));
+  return box;
+}
+// Back from sleep or from another tab: the lock is gone and the link may be dead.
+var hiddenAt = 0;
+document.addEventListener('visibilitychange', function () {
+  if (document.hidden) { hiddenAt = Date.now(); return; }
+  keepAwake();
+  if (link && (!link.isUp() || Date.now() - hiddenAt > 15000)) link.kick();
+});
+window.addEventListener('pageshow', function (e) { if (e.persisted && link) link.kick(); });
+// Browsers let a video play without a tap only sometimes: the first tap starts it too.
+document.addEventListener('click', function () { keepAwake(); });
 
 // The ring tone picker, under a listening code's tiles.
 function tonePicker() {
@@ -230,3 +282,4 @@ function start() {
 }
 window.addEventListener('hashchange', function () { location.reload(); });
 start();
+keepAwake();

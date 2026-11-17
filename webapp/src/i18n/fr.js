@@ -168,4 +168,9 @@ export default {
   "On an NFC tag too": "Aussi sur un tag NFC",
   "Copy a code's link into an NFC writer app (e.g. NFC Tools), write it to an NTAG213 sticker and lock the tag, so nobody can put another link on it. Stick it where the code's rooms are, never outside the house: whoever taps it may switch what the code shows. A lost tag is revoked like a card.": "Copiez le lien d'un code dans une appli NFC (p. ex. NFC Tools), écrivez-le sur un autocollant NTAG213 et verrouillez le tag, pour que personne n'y mette un autre lien. Collez-le là où sont les pièces du code, jamais à l'extérieur : qui le touche peut commander ce que le code montre. Un tag perdu se révoque comme une carte.",
   "Copy link for an NFC tag": "Copier le lien pour un tag NFC",
+  "Rang: {n} phone(s) listening": "Sonné : {n} téléphone(s) à l'écoute",
+  "the door camera was asked for pictures": "la caméra de la porte a été sollicitée",
+  "Rings like the door station: the listening phones, the lights and chime, the door camera": "Sonne comme la platine de rue : les téléphones à l'écoute, les lampes et le carillon, la caméra",
+  "Only the lights and chime chosen below": "Seulement les lampes et le carillon choisis ci-dessous",
+  "Ring test": "Test de sonnerie",
 };

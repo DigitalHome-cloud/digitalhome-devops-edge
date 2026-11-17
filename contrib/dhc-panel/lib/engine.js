@@ -281,6 +281,29 @@ class Engine extends EventEmitter {
         this.emit("ring", { ringId, code: code.id, name: code.name, listeners: hearing, targets });
     }
 
+    /**
+     * A ring from the edge's page, as if the door station's button were pressed:
+     * the listening phones ring, the house's bell goes off, and a door station
+     * that is online is asked for pictures. Its answers reach that station as a
+     * real ring's would. → { listeners online, bell targets, camera asked }
+     */
+    testRing(name = "Test") {
+        const now = Date.now();
+        const ringId = now.toString(36);
+        const door = this.registry.codes.find((c) => c.kind === "door" && this.online.get(c.id)) || null;
+        const listeners = this.registry.codes.filter((c) => c.bell === "listen");
+        for (const l of listeners) this.event(l.id, { t: "ring", ringId, from: door ? door.name : name, ts: now, test: true });
+        const hearing = listeners.filter((l) => this.online.get(l.id)).length;
+        if (door) {
+            this.lastRing = { ringId, from: door.id, ts: now };
+            this.event(door.id, { t: "rung", ringId, listeners: hearing });
+            this.watch(door.id, ringId, WATCH_MS);
+        }
+        const targets = this.setOffBell(name);
+        this.emit("ring", { ringId, code: door ? door.id : null, name, listeners: hearing, targets, test: true });
+        return { listeners: hearing, targets, camera: !!door };
+    }
+
     /** Ask a door station for pictures for `ms` (0: stop). Frames outside this window are dropped. */
     watch(id, ringId, ms) {
         this.watching.set(id, { ringId, until: Date.now() + ms });

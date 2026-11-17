@@ -119,6 +119,7 @@ module.exports = function (RED) {
         try { engine.registry.setBell(req.body || {}); res.json(engine.bellSettings()); } catch (err) { res.status(400).json({ error: err.message }); }
     });
     RED.httpNode.post("/api/panel/bell/test", (req, res) => { if (need(res)) res.json({ targets: engine.setOffBell("test") }); });
+    RED.httpNode.post("/api/panel/bell/ring", (req, res) => { if (need(res)) res.json(engine.testRing("Test")); });
     RED.httpNode.get("/api/panel/labels", (req, res) => { if (need(res)) res.json(engine.labelEntries()); });
     RED.httpNode.put("/api/panel/labels", json, (req, res) => {
         if (!need(res)) return;

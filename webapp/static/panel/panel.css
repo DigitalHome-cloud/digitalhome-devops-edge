@@ -42,3 +42,9 @@ h2 { font-size: 15px; font-weight: 600; color: var(--dim); margin: 18px 4px 8px;
 .card-buttons { display: flex; flex-direction: column; gap: 12px; }
 .card-buttons button { all: unset; padding: 20px 12px; font-size: 22px; font-weight: 700; border-radius: 16px; background: var(--blue); color: #fff; cursor: pointer; text-align: center; }
 .card-buttons button.quiet { background: var(--line); }
+.tone { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 18px 0 4px; }
+.tone label { color: var(--dim); font-size: 15px; }
+.tone select, .tone button { font: inherit; padding: 10px 12px; border-radius: 10px; border: 2px solid var(--line); background: var(--tile); color: var(--text); }
+.tone select { flex: 1 1 10rem; }
+.tone button { cursor: pointer; }
+.tone select:focus-visible, .tone button:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }

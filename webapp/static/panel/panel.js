@@ -11,15 +11,18 @@ var TEXTS = {
   en: { up: 'connected', down: 'no link', nocode: 'This address has no code. Scan the QR code again.', refused: 'This code is no longer valid. Ask for a new one.',
     empty: 'Nothing to switch here.', on: 'on', off: 'off', away: 'not reachable', open: 'open', closed: 'closed', ring: 'Ring', rung: 'I have rung.', nobody: 'I have rung. Please wait.',
     rings: 'is ringing', door: 'At the door', coming: 'I am coming', wait: 'One moment', leave: 'Leave it at the door', close: 'Close',
-    a_coming: 'Someone is coming.', a_wait: 'One moment, please.', a_leave: 'Please leave it at the door.', answered: 'answered', listen: 'This phone rings with the door bell while this page is open.', sound: 'Tap once so the bell can sound' },
+    a_coming: 'Someone is coming.', a_wait: 'One moment, please.', a_leave: 'Please leave it at the door.', answered: 'answered', listen: 'This phone rings with the door bell while this page is open.', sound: 'Tap once so the bell can sound',
+    tone: 'Ring tone', test: 'Test', t_dingdong: 'Ding-dong', t_bell: 'Classic bell', t_chime: 'Soft chime', t_westminster: 'Westminster', t_silent: 'Vibrate only' },
   de: { up: 'verbunden', down: 'keine Verbindung', nocode: 'Diese Adresse hat keinen Code. Bitte den QR-Code noch einmal scannen.', refused: 'Dieser Code gilt nicht mehr. Bitte einen neuen geben lassen.',
     empty: 'Hier gibt es nichts zu schalten.', on: 'an', off: 'aus', away: 'nicht erreichbar', open: 'offen', closed: 'zu', ring: 'Klingeln', rung: 'Ich habe geklingelt.', nobody: 'Ich habe geklingelt. Bitte warten.',
     rings: 'klingelt', door: 'An der Tür', coming: 'Ich komme', wait: 'Einen Moment', leave: 'Bitte abstellen', close: 'Schließen',
-    a_coming: 'Es kommt jemand.', a_wait: 'Einen Moment, bitte.', a_leave: 'Bitte vor der Tür abstellen.', answered: 'hat geantwortet', listen: 'Dieses Handy klingelt mit, solange diese Seite offen ist.', sound: 'Einmal tippen, damit die Klingel zu hören ist' },
+    a_coming: 'Es kommt jemand.', a_wait: 'Einen Moment, bitte.', a_leave: 'Bitte vor der Tür abstellen.', answered: 'hat geantwortet', listen: 'Dieses Handy klingelt mit, solange diese Seite offen ist.', sound: 'Einmal tippen, damit die Klingel zu hören ist',
+    tone: 'Klingelton', test: 'Testen', t_dingdong: 'Ding-Dong', t_bell: 'Klassische Glocke', t_chime: 'Sanfter Gong', t_westminster: 'Westminster', t_silent: 'Nur vibrieren' },
   fr: { up: 'connecté', down: 'pas de lien', nocode: 'Cette adresse n\'a pas de code. Scannez de nouveau le code QR.', refused: 'Ce code n\'est plus valable. Demandez-en un nouveau.',
     empty: 'Rien à commander ici.', on: 'allumé', off: 'éteint', away: 'injoignable', open: 'ouvert', closed: 'fermé', ring: 'Sonner', rung: 'J\'ai sonné.', nobody: 'J\'ai sonné. Merci de patienter.',
     rings: 'sonne', door: 'À la porte', coming: 'J\'arrive', wait: 'Un instant', leave: 'Déposez-le devant la porte', close: 'Fermer',
-    a_coming: 'Quelqu\'un arrive.', a_wait: 'Un instant, s\'il vous plaît.', a_leave: 'Merci de le déposer devant la porte.', answered: 'a répondu', listen: 'Ce téléphone sonne avec la sonnette tant que cette page est ouverte.', sound: 'Touchez une fois pour entendre la sonnette' }
+    a_coming: 'Quelqu\'un arrive.', a_wait: 'Un instant, s\'il vous plaît.', a_leave: 'Merci de le déposer devant la porte.', answered: 'a répondu', listen: 'Ce téléphone sonne avec la sonnette tant que cette page est ouverte.', sound: 'Touchez une fois pour entendre la sonnette',
+    tone: 'Sonnerie', test: 'Essayer', t_dingdong: 'Ding-dong', t_bell: 'Cloche classique', t_chime: 'Carillon doux', t_westminster: 'Westminster', t_silent: 'Vibreur seul' }
 };
 var ICONS = { light: '💡', switch: '🔌', blind: '🪟', heating: '🌡️' };
 
@@ -101,7 +104,7 @@ function paint() {
     if (rooms.length > 1 || r) main.appendChild(el('h2', '', r || '·'));
     var grid = el('div', 'tiles'); byRoom[r].forEach(function (tile) { grid.appendChild(tileNode(tile)); }); main.appendChild(grid);
   });
-  if (scope.bell === 'listen') note(audio ? t('listen') : t('sound'));
+  if (scope.bell === 'listen') { main.appendChild(tonePicker()); note(audio ? t('listen') : t('sound')); }
   else if (!scope.tiles.length && scope.bell !== 'ring') note(t('empty'));
   else note('');
   window.scrollTo(0, keep);
@@ -116,14 +119,47 @@ function soundOn() {   // browsers let a page sound only after a touch
 }
 document.addEventListener('click', soundOn);
 
+// Ring tones, chosen per phone and kept in this browser. Each is a list of
+// [frequency Hz, start s, length s] played with one wave shape, and repeats
+// every `every` ms while the card rings. Westminster is the public-domain
+// quarter chime. Generated here: no sound files.
+var TONES = {
+  dingdong: { wave: 'sine', every: 4000, notes: [[660, 0, 0.9], [520, 0.45, 0.9]] },
+  bell: { wave: 'triangle', every: 3000, notes: [[1046, 0, 0.35], [1046, 0.18, 0.35], [1046, 0.36, 0.35], [1046, 0.54, 0.35], [1046, 0.72, 0.35], [1046, 0.9, 0.6]] },
+  chime: { wave: 'sine', every: 4000, notes: [[523, 0, 1.4], [659, 0.35, 1.4], [784, 0.7, 1.8]] },
+  westminster: { wave: 'sine', every: 6000, notes: [[415, 0, 0.9], [330, 0.6, 0.9], [370, 1.2, 0.9], [247, 1.8, 1.4], [247, 3, 0.9], [370, 3.6, 0.9], [415, 4.2, 0.9], [330, 4.8, 1.6]] },
+  silent: { wave: 'sine', every: 4000, notes: [] }
+};
+var TONE_KEY = 'dhc.panel.tone';
+function toneName() {
+  var v = null;
+  try { v = localStorage.getItem(TONE_KEY); } catch (e) { /* storage blocked: the default */ }
+  return TONES[v] ? v : 'dingdong';
+}
+function setTone(v) { try { localStorage.setItem(TONE_KEY, v); } catch (e) { /* kept until the page closes */ } }
+
 function dingDong() {
   if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
   if (!audio) return;
-  [[660, 0], [520, 0.45]].forEach(function (n) {
+  var tone = TONES[toneName()];
+  tone.notes.forEach(function (n) {
     var o = audio.createOscillator(), g = audio.createGain(), at = audio.currentTime + n[1];
-    o.type = 'sine'; o.frequency.value = n[0]; g.gain.setValueAtTime(0.5, at); g.gain.exponentialRampToValueAtTime(0.001, at + 0.9);
-    o.connect(g); g.connect(audio.destination); o.start(at); o.stop(at + 1);
+    o.type = tone.wave; o.frequency.value = n[0]; g.gain.setValueAtTime(0.5, at); g.gain.exponentialRampToValueAtTime(0.001, at + n[2]);
+    o.connect(g); g.connect(audio.destination); o.start(at); o.stop(at + n[2] + 0.1);
   });
+}
+
+// The ring tone picker, under a listening code's tiles.
+function tonePicker() {
+  var box = el('div', 'tone'), sel = el('select'), test = el('button', 'quiet', t('test'));
+  sel.setAttribute('aria-label', t('tone'));
+  Object.keys(TONES).forEach(function (k) { var o = el('option', '', t('t_' + k)); o.value = k; o.selected = k === toneName(); sel.appendChild(o); });
+  sel.onchange = function () { setTone(sel.value); soundOn(); dingDong(); };
+  test.type = 'button';
+  test.onclick = function () { soundOn(); dingDong(); };
+  box.appendChild(el('label', '', t('tone')));
+  box.appendChild(sel); box.appendChild(test);
+  return box;
 }
 
 function card(icon, text, buttons, ringing, ms) {
@@ -132,7 +168,7 @@ function card(icon, text, buttons, ringing, ms) {
   var box = $('card-buttons'); box.textContent = '';
   buttons.forEach(function (b) { var n = el('button', b.quiet ? 'quiet' : '', b.label); n.type = 'button'; n.onclick = b.fn; box.appendChild(n); });
   $('card').className = 'card' + (ringing ? ' ringing' : '') + ($('card-picture').hidden ? '' : ' with-picture'); $('card').hidden = false;
-  if (ringing) { dingDong(); ringTimer = setInterval(dingDong, 4000); }
+  if (ringing) { dingDong(); ringTimer = setInterval(dingDong, TONES[toneName()].every); }
   cardTimer = setTimeout(closeCard, ms || 60000);
 }
 function closeCard() { clearTimeout(cardTimer); clearInterval(ringTimer); $('card').hidden = true; ringOpen = false; picture(null); }

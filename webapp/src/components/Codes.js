@@ -137,6 +137,7 @@ export default function Codes({ active }) {
             <div className="dhe-card__how">{tIn(c.lang, "Scan with the phone's camera, on the home Wi-Fi")}</div>
           </div>
         ))}</div>
+        <NfcLinks codes={made.filter((c) => c.kind !== "door")} link={link} />
       </section>
     )}
 
@@ -153,6 +154,24 @@ export default function Codes({ active }) {
       ))}</div>
     </section>
   </>);
+}
+
+// The same link on an NFC sticker: any NFC phone opens it without an app. This
+// page is plain http on the home network, where browsers do not let a page
+// write tags, so the link is copied into an NFC writer app. Not printed.
+function NfcLinks({ codes, link }) {
+  const { t } = useI18n();
+  const [copied, setCopied] = useState("");
+  const copy = (c) => { try { navigator.clipboard.writeText(link(c)).then(() => setCopied(c.id), () => {}); } catch (_) { /* select by hand */ } };
+  return (<div className="dhe-nfc">
+    <h3>{t("On an NFC tag too")}</h3>
+    <p className="app-panel__hint">{t("Copy a code's link into an NFC writer app (e.g. NFC Tools), write it to an NTAG213 sticker and lock the tag, so nobody can put another link on it. Stick it where the code's rooms are, never outside the house: whoever taps it may switch what the code shows. A lost tag is revoked like a card.")}</p>
+    {codes.map((c) => (
+      <div className="app-row" key={c.id}>
+        <span style={{ flex: "1 1 10rem" }}>{c.name}</span>
+        <button className="app-button app-button--ghost app-button--small" onClick={() => copy(c)}>{copied === c.id ? t("Copied") : t("Copy link for an NFC tag")}</button>
+      </div>))}
+  </div>);
 }
 
 // The door station adapter's link: pasted into the Pi's installer, never printed. Shown once, like a card.

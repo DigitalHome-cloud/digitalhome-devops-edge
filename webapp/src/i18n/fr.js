@@ -164,4 +164,8 @@ export default {
   "Nothing rings yet: make a code for the door station adapter, or one for a phone that is the door bell (Codes).": "Rien ne sonne encore : créez un code pour l’adaptateur de la platine de rue, ou pour un téléphone qui fait la sonnette (Codes).",
   "ready": "prêt",
   "not connected": "non connecté",
+  // NFC (scan and control)
+  "On an NFC tag too": "Aussi sur un tag NFC",
+  "Copy a code's link into an NFC writer app (e.g. NFC Tools), write it to an NTAG213 sticker and lock the tag, so nobody can put another link on it. Stick it where the code's rooms are, never outside the house: whoever taps it may switch what the code shows. A lost tag is revoked like a card.": "Copiez le lien d'un code dans une appli NFC (p. ex. NFC Tools), écrivez-le sur un autocollant NTAG213 et verrouillez le tag, pour que personne n'y mette un autre lien. Collez-le là où sont les pièces du code, jamais à l'extérieur : qui le touche peut commander ce que le code montre. Un tag perdu se révoque comme une carte.",
+  "Copy link for an NFC tag": "Copier le lien pour un tag NFC",
 };
